@@ -1,22 +1,25 @@
-import {fromChineseNumber, readTextContent, nodefs,writeChanged} from 'ptk/nodebundle.cjs'
+import {fromChineseNumber, readTextContent, nodefs,writeChanged,patchBuf} from 'ptk/nodebundle.cjs'
 await nodefs;
 const maxfile=230 ; //230
 const fileprefix='raw/gwgzyz/text';
-
+const Patches={
+    222:[['缇骑（tíjì），','缇骑（tíjì）：']],
+    141:[['睍睍（xiàn），','睍睍（xiàn）：']]
+}
 const parseEpub=content=>{
     let s=content.replace(/<p class="zw">/g,'\n^m').replace(/<[^>]+>/g,'').trim();
     return s;
 }
+let singlecount=0,notecount=0;
 const parseEpubWithNote=content=>{
     const footnoteid={};
     let s=content;
 
     s=content.replace(/\n/g,'').replace(/<a href="text\d+\.html#([^"]+)">(.+?)<\/a>/g,(m,m1,t)=>{
         // if (~t.indexOf('<'))console.log(t)
-        const s= t.replace(/<br\/>/g,"^p");//
-
+        let  s= t.replace(/<br\/>/g,"^p");//
+        s=s.replace(/。([\u3400-\u9fff]+)：/g,'。^p$1：'); //
         //TODO: 注釋條 嵌入 內文。
-        
         footnoteid[m1.slice(2)]=s;
         return '';
     })
@@ -31,6 +34,59 @@ const parseEpubWithNote=content=>{
     s=s.replace(/\n*/g,'')
     s=s.replace(/\[\d+\]/g,'')
     return [parseEpub(s), footnoteid];
+}
+const pinnote=(yw,notes,id)=>{
+    const patches=Patches[id]
+    const wordnotes={};
+    let notegroup=0; //即 ^f 的id
+    for (let key in notes) {
+        notegroup++;
+        let touched=false;
+        let  lines=notes[key].split('^p'); 
+        for (let i=1;i<lines.length;i++) { //combine with previous line if not a note
+            if (!~lines[i].indexOf('：')) {
+                lines[i-1]=lines[i-1]+'^p'+lines[i];
+                lines[i]='';
+            }
+        }
+        lines=lines.filter(it=>!!it); //保證每行 只有一個「：」
+
+        for (let i=0;i<lines.length;i++) {
+            let note=lines[i];
+            if (patches) { //處理 漏了 ： 
+                for (let i=0;i<patches.length;i++) {
+                    const [from,to]=patches[i];
+                    note=note.replace(from,to)
+                }
+                if (note!=notes[key]) {
+                    lines[i]=note;
+                    touched=true;
+                }
+            }
+
+            if (~lines[i].indexOf('：')) {
+                const parts=lines[i].split('：');
+                notecount++;
+                if (parts.length!==2) {
+                    // if (parts.length==1) 
+                    // console.log(parts)
+                } else {
+                    const [word,def]=parts;
+                    if (!wordnotes[notegroup]) wordnotes[notegroup]=[];
+                    const nopinyin=word.replace(/（[a-zA-Z][^）]+）/g,'')
+                    wordnotes[notegroup].push([nopinyin,def,word!==nopinyin?word:'']);
+                    singlecount++;
+                }
+            } else {
+                //特殊情況，解釋整句
+            }
+        }
+        if (touched) {
+            notes[key]=lines.join('^p');
+        }
+        
+    }
+    //試著用wordnotes 找 出文字，再替換為 ^f(詞) 
 }
 const breaksentence=line=>{
     return line.replace(/(。”?)/g,'$1\n')
@@ -83,15 +139,20 @@ const emitContent=content=>{
         articlecount++;
         json.id=articlecount;
     }
+
+    pinnote(json.yuanwen,json.notes,json.id);
     const notes=[],notekeys=[];
+    const patches=Patches[json.id]
     for (let key in json.notes) {
+        let note=json.notes[key];
         notekeys.push(key);
-        notes.push(['',json.notes[key]]);
+        notes.push(['',note]);
     }
+    
     const yuanwen=breaksentence(json.yuanwen.replace(/\^f([\d_]+) */g,(m,m1)=>{
         const at=notekeys.indexOf(m1);
         if (!~at) return '^f0'; //error foonote
-        notes[at][0]=json.id+'.'+  (at+1);
+        notes[at][0]=json.id+'.'+ (at+1);
         return '^f'+(at+1);
     }));
 
@@ -125,3 +186,4 @@ while (i<=maxfile) {
 writeChanged('off/gwgzyw.off',ywoff.join('\n'),true);
 writeChanged('off/gwgzbh.off',bhoff.join('\n'),true);
 writeChanged('off/gwgzyw.tsv', allnotes.join('\n'),true)
+console.log('allnote',notecount,'singlecount',singlecount)
