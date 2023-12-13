@@ -34,9 +34,9 @@ const parseEpubWithNote=content=>{
 }
 const breaksentence=line=>{
     return line.replace(/(。”?)/g,'$1\n')
-    .replace(/(.{10}”)(.{5})/g,"$1\n$2")
-    .replace(/(.{10})([？！；])(.{5})/g,"$1$2\n$3")
-    .replace(/\n’/g,'’\n')   
+    .replace(/(.{6}”)(.{5})/g,"$1\n$2")
+    .replace(/(.{6})([？！；])(.{5})/g,"$1$2\n$3")
+    .replace(/\n([”’]+)/g,'$1\n')   
     .replace(/\n+/g,'\n')
     .trim()
 }
