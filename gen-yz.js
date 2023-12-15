@@ -36,6 +36,7 @@ const parseEpubWithNote=content=>{
     return [parseEpub(s), footnoteid];
 }
 const pinnote=(yw,notes,id)=>{
+    const wordoccur={};
     const patches=Patches[id]
     const wordnotes={};
     let notegroup=0; //即 ^f 的id
@@ -72,8 +73,11 @@ const pinnote=(yw,notes,id)=>{
                     // console.log(parts)
                 } else {
                     const [word,def]=parts;
-                    if (!wordnotes[notegroup]) wordnotes[notegroup]=[];
                     const nopinyin=word.replace(/（[a-zA-Z][^）]+）/g,'')
+                    if (!wordoccur[nopinyin]) wordoccur[nopinyin]=0;
+                    wordoccur[nopinyin]++
+                    if (!wordnotes[notegroup]) wordnotes[notegroup]=[];
+                    
                     wordnotes[notegroup].push([nopinyin,def,word!==nopinyin?word:'']);
                     singlecount++;
                 }
@@ -84,9 +88,40 @@ const pinnote=(yw,notes,id)=>{
         if (touched) {
             notes[key]=lines.join('^p');
         }
-        
     }
+
+    const parts=yw.split(/\^f([\d_]+)/);
+    const out=[];
+    for (let i=0;i<parts.length/2;i++) {
+        let text=parts[i*2];
+        let noteid=parts[i*2+1];
+        const at=(noteid||'').indexOf('_');
+        if (~at) noteid=noteid.slice(at+1)
+        
+        if (!noteid) continue;
+        const notes=wordnotes[noteid];
+        let replaced=0;
+        if (notes) {
+            for (let i=0;i<notes.length;i++) {
+                const [nopinyin]=notes[i]
+                if (wordoccur[nopinyin]==1) {
+                    text=text.replace( nopinyin, '^f('+nopinyin+')')
+                    notes[i][3]=true
+                    replaced++;
+                }
+            }
+            out.push(text)
+            if (replaced!==notes.length) {
+                out.push('^f'+noteid+' ')
+            }
+        } else {
+            out.push(text)            
+            out.push('^f'+noteid+' ')
+        }
+    }
+    return out.join('')
     //試著用wordnotes 找 出文字，再替換為 ^f(詞) 
+    
 }
 const breaksentence=line=>{
     return line.replace(/(。”?)/g,'$1\n')
@@ -140,7 +175,7 @@ const emitContent=content=>{
         json.id=articlecount;
     }
 
-    pinnote(json.yuanwen,json.notes,json.id);
+    const yw_pinned=pinnote(json.yuanwen,json.notes,json.id);
     const notes=[],notekeys=[];
     const patches=Patches[json.id]
     for (let key in json.notes) {
@@ -149,7 +184,7 @@ const emitContent=content=>{
         notes.push(['',note]);
     }
     
-    const yuanwen=breaksentence(json.yuanwen.replace(/\^f([\d_]+) */g,(m,m1)=>{
+    const yuanwen=breaksentence(yw_pinned.replace(/\^f([\d_]+) */g,(m,m1)=>{
         const at=notekeys.indexOf(m1);
         if (!~at) return '^f0'; //error foonote
         notes[at][0]=json.id+'.'+ (at+1);
