@@ -39,10 +39,10 @@ const pinnote=(yw,rawnotes,id)=>{
     const wordoccur={};
     const patches=Patches[id]
     const wordnotes={},outnotes=[];
+    let touched=false;
     let notegroup=0; //即 ^f 的id
     for (let key in rawnotes) {
         notegroup++;
-        let touched=false;
         let  lines=rawnotes[key].split('^p'); 
         for (let i=1;i<lines.length;i++) { //combine with previous line if not a note
             if (!~lines[i].indexOf('：')) {
@@ -115,9 +115,10 @@ const pinnote=(yw,rawnotes,id)=>{
             out.push(text);
         } else {
             out.push(text);
-            out.push('^ferror'+noteid+' ')//cannot match
+            out.push('^ferr'+noteid+' ')//cannot match
         }
     }
+    out.push(parts[parts.length-1]);
     return [out.join('')   ,outnotes]
 }
 const breaksentence=line=>{
@@ -128,6 +129,7 @@ const breaksentence=line=>{
     .replace(/\n+/g,'\n')
     .trim()
 }
+
 const extractEpub=(raw)=>{
     const out={};
     raw=raw.replace(/[\u200b]/g,'')
@@ -162,6 +164,18 @@ const extractEpub=(raw)=>{
 let articlecount=0,i=4;
 
 const ywoff=[],bhoff=[],allnotes=[];
+
+//手動 分行的文件，與合併
+let splitcontent=readTextContent("off/gwgzyw.off").split(/(\^ck\d+【[^】]+】\^n1)/);
+splitcontent.shift();
+const splititems=[]
+for (let i=0;i<splitcontent.length/2;i++) {
+    const id=splitcontent[i*2].match(/ck(\d+)/)[1];  
+    splititems.push(splitcontent[i*2+1].replace(/\^f(\d+)/g,(m,m1)=>'^f'+id+'_'+m1));
+}
+if (splititems.length!==222) throw "invalid split content"
+
+
 const emitContent=content=>{
     const json=extractEpub(content);
     if (!json) {
@@ -171,10 +185,11 @@ const emitContent=content=>{
         articlecount++;
         json.id=articlecount;
     }
+    const yw=splititems[articlecount-1];
+    const [yw_pinned,notes]=pinnote(yw,json.notes,json.id);
+    const yuanwen=yw_pinned;
 
-    const [yw_pinned,notes]=pinnote(json.yuanwen,json.notes,json.id);
-    
-    const yuanwen=breaksentence(yw_pinned);//
+    //const yuanwen=breaksentence(yw_pinned);//
     
     // .replace(/\^f([\d_]+) */g,(m,m1)=>{
     //     const at=notekeys.indexOf(m1);
@@ -187,6 +202,7 @@ const emitContent=content=>{
     bhoff.push('^ck'+json.id+'【'+json.title+'】^n1\n'+breaksentence(json.yiwen));
     allnotes.push(...notes);
 }
+
 while (i<=maxfile) {
     const fn=fileprefix+i.toString().padStart(5,'0')+'.html';
     let  content=readTextContent(fn)
@@ -210,7 +226,7 @@ while (i<=maxfile) {
     i++;
 }
 
-writeChanged('off/gwgzyw.off',ywoff.join('\n'),true);
-writeChanged('off/gwgzbh.off',bhoff.join('\n'),true);
+writeChanged('off/gwgzyw.ori.off',ywoff.join('\n'),true);
+writeChanged('off/gwgzbh.ori.off',bhoff.join('\n'),true);
 writeChanged('off/gwgzyw.tsv', allnotes.join('\n'),true)
 console.log('allnote',notecount,'singlecount',singlecount)
