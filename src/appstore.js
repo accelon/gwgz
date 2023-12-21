@@ -5,13 +5,12 @@ _ACC23.CacheName='v1::gwgz',
 _ACC23.AppVer='23.12.12';
 _ACC23.AppName='gwgz'
 _ACC23.AppTitle='古文觀止'
-_ACC23.allptks=['gwgz'];
-_ACC23.selectedptks=['gwgz']
-_ACC23.activeptk='gwgz'
+_ACC23.allptks=['gwgz','gwgz-yfl'];
+_ACC23.selectedptks=['gwgz','gwgz-yfl']
+_ACC23.activeptk='gwgz';
 _ACC23.ptkinfo={
-    'gwgz':"中",
-    'gwgz-en':"英文版",
-    'gwgz-ru':"俄文版",
+    'gwgz':"文言",
+    'gwgz-yfl':"阴法魯"
 }
 _ACC23.favorites=[];
 _ACC23.MAXFAVORITE=100;

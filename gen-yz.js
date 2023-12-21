@@ -1,4 +1,4 @@
-import {fromChineseNumber, readTextContent, nodefs,writeChanged,patchBuf} from 'ptk/nodebundle.cjs'
+import { readTextContent, nodefs,writeChanged} from 'ptk/nodebundle.cjs'
 await nodefs;
 const maxfile=230 ; //230
 const fileprefix='raw/gwgzyz/text';
@@ -228,5 +228,5 @@ while (i<=maxfile) {
 
 writeChanged('off/gwgzyw.ori.off',ywoff.join('\n'),true);
 writeChanged('off/gwgzbh.ori.off',bhoff.join('\n'),true);
-writeChanged('off/gwgzyw.tsv', allnotes.join('\n'),true)
+writeChanged('off/gwgzyw.ori.tsv', allnotes.join('\n'),true)
 console.log('allnote',notecount,'singlecount',singlecount)
