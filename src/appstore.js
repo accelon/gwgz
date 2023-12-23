@@ -10,7 +10,7 @@ _ACC23.selectedptks=['gwgz','gwgz-yfl']
 _ACC23.activeptk='gwgz';
 _ACC23.ptkinfo={
     'gwgz':"文言",
-    'gwgz-yfl':"阴法魯"
+    'gwgz-yfl':"陰法魯"
 }
 _ACC23.favorites=[];
 _ACC23.MAXFAVORITE=100;
